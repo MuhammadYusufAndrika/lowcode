@@ -112,7 +112,7 @@ class DemoDataSeederTest extends TestCase
         }
     }
 
-    public function test_only_matching_seeded_accounts_have_their_password_reset(): void
+    public function test_existing_account_passwords_are_preserved(): void
     {
         $this->seed(DemoDataSeeder::class);
         $admin = User::where('email', 'admin@demo.processflow.test')->sole();
@@ -129,7 +129,7 @@ class DemoDataSeederTest extends TestCase
         $this->seed(DemoDataSeeder::class);
 
         $admin->refresh();
-        $this->assertTrue(Hash::check('password', $admin->password));
+        $this->assertSame($adminBefore['password'], $admin->password);
         $this->assertNotSame('password', $admin->password);
         $this->assertTrue($admin->hasExactRoles(['Super Admin']));
         unset($adminBefore['password'], $adminBefore['updated_at']);

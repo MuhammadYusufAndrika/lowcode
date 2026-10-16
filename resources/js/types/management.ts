@@ -18,7 +18,8 @@ export interface Workflow {
     owner: { id: number; name: string };
     created_at: string;
     updated_at: string;
-    can: { update: boolean; delete: boolean; duplicate: boolean };
+    published_version?: number | null;
+    can: { builder: boolean; update: boolean; delete: boolean; duplicate: boolean };
 }
 export interface Department {
     id: number;

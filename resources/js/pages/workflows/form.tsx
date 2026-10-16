@@ -20,7 +20,14 @@ export default function WorkflowForm({ workflow }: { workflow: Workflow | null }
     return (
         <ManagementPage
             title={workflow ? 'Edit workflow' : 'Buat workflow'}
-            description="Tetapkan identitas dan tujuan workflow. Workflow baru disimpan sebagai draf."
+            description="Tetapkan identitas dan tujuan workflow. Setelah membuat workflow, buka builder untuk merancang alurnya."
+            action={
+                workflow && (
+                    <Button asChild>
+                        <Link href={`/workflows/${workflow.id}/builder`}>Buka Builder</Link>
+                    </Button>
+                )
+            }
         >
             <div className="max-w-3xl">
                 <Panel>

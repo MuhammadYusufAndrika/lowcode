@@ -96,6 +96,11 @@ export default function Workflows({
                                         <td className="text-muted-foreground px-3 py-5 whitespace-nowrap">{date(w.updated_at)}</td>
                                         <td className="px-3 py-5">
                                             <div className="flex flex-wrap gap-2">
+                                                {w.can.builder && (
+                                                    <Button asChild size="sm">
+                                                        <Link href={`/workflows/${w.id}/builder`}>Buka Builder</Link>
+                                                    </Button>
+                                                )}
                                                 {w.can.update && (
                                                     <Button asChild size="sm" variant="outline">
                                                         <Link href={`/workflows/${w.id}/edit`}>Edit</Link>

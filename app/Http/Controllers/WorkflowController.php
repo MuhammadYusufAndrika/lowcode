@@ -91,7 +91,9 @@ class WorkflowController extends Controller
         return [
             ...$workflow->only(['id', 'name', 'code', 'description', 'category', 'status', 'created_at', 'updated_at']),
             'owner' => $workflow->owner->only(['id', 'name']),
+            'published_version' => $workflow->latestPublishedVersion?->version,
             'can' => [
+                'builder' => $request->user()->can('update', $workflow),
                 'update' => $request->user()->can('update', $workflow),
                 'delete' => $request->user()->can('delete', $workflow),
                 'duplicate' => $request->user()->can('duplicate', $workflow),

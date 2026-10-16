@@ -27,7 +27,7 @@ export function ManagementPage({
             <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 md:p-8">
                 <header className="flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-widest uppercase">ProcessFlow / Fondasi</p>
+                        <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-widest uppercase">ProcessFlow / Ruang kerja</p>
                         <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
                         <p className="text-muted-foreground mt-2 text-sm">{description}</p>
                     </div>
@@ -59,7 +59,7 @@ export function Field({ label, name, error, children }: { label: string; name: s
         <div className="grid gap-2">
             <Label htmlFor={name}>{label}</Label>
             {children}
-            <InputError message={String(error)} />
+            <InputError message={error} />
         </div>
     );
 }

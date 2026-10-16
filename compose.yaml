@@ -1,0 +1,135 @@
+x-runtime: &runtime
+  image: processflow-app:${IMAGE_TAG:-local}
+  build:
+    context: .
+    target: runtime
+  restart: unless-stopped
+  init: true
+  environment: &environment
+    APP_NAME: ProcessFlow
+    APP_ENV: ${APP_ENV:-production}
+    APP_KEY: ${APP_KEY:?Set APP_KEY before starting containers}
+    APP_DEBUG: "false"
+    APP_URL: ${APP_URL:?Set APP_URL to the external application URL}
+    APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
+    LOG_CHANNEL: stderr
+    LOG_LEVEL: ${LOG_LEVEL:-warning}
+    DB_CONNECTION: mysql
+    DB_HOST: mysql
+    DB_PORT: "3306"
+    DB_DATABASE: ${DB_DATABASE:?Set DB_DATABASE}
+    DB_USERNAME: ${DB_USERNAME:?Set DB_USERNAME to a non-root application user}
+    DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+    DB_URL: ""
+    REDIS_CLIENT: phpredis
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    REDIS_URL: ""
+    CACHE_STORE: redis
+    QUEUE_CONNECTION: redis
+    SESSION_DRIVER: redis
+    SESSION_ENCRYPT: "true"
+    SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+    SESSION_SAME_SITE: lax
+    FILESYSTEM_DISK: local
+    MAIL_MAILER: log
+  volumes:
+    - storage:/var/www/html/storage
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  stop_grace_period: 90s
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  app:
+    <<: *runtime
+    healthcheck:
+      test: [CMD-SHELL, 'SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    <<: *runtime
+    command: [php, artisan, 'queue:work', redis, '--sleep=3', '--tries=3', '--timeout=60', '--max-time=3600', '--no-interaction']
+    healthcheck:
+      test: [CMD-SHELL, 'kill -0 1 && pgrep -f "[q]ueue:work" >/dev/null']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  scheduler:
+    <<: *runtime
+    command: [php, artisan, 'schedule:work', '--no-interaction']
+    healthcheck:
+      test: [CMD-SHELL, 'kill -0 1 && pgrep -f "[s]chedule:work" >/dev/null']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  nginx:
+    image: processflow-web:${IMAGE_TAG:-local}
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    ports:
+      - '${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80'
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, '-O', /dev/null, 'http://127.0.0.1/healthz']
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?Set DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME:?Set DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set a separate MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$${MYSQL_PASSWORD}" mysql --protocol=TCP -h 127.0.0.1 -u "$${MYSQL_USER}" "$${MYSQL_DATABASE}" -e "SELECT 1" >/dev/null 2>&1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command: [sh, -c, 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  storage:
+  mysql-data:
+  redis-data:

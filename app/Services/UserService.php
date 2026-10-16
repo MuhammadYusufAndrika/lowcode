@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Workflow;
+use App\Models\WorkflowVersion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -57,6 +58,22 @@ class UserService
             }
             if (Workflow::where('owner_id', $target->id)->exists()) {
                 throw ValidationException::withMessages(['user' => 'Pengguna masih memiliki workflow.']);
+            }
+            foreach ([['workflow_versions', 'published_by'], ['workflow_instances', 'requester_id'], ['workflow_tasks', 'decided_by'], ['workflow_tasks', 'escalation_user_id'], ['workflow_execution_logs', 'actor_id'], ['audit_logs', 'actor_id'], ['workflow_files', 'user_id'], ['workflow_notifications', 'user_id']] as [$table, $column]) {
+                if (DB::table($table)->where($column, $target->id)->exists()) {
+                    throw ValidationException::withMessages(['user' => 'Pengguna memiliki referensi riwayat workflow.']);
+                }
+            }
+            if (DB::table('workflow_tasks')->where('assignee_type', 'user')->where('assignee_id', $target->id)->exists()) {
+                throw ValidationException::withMessages(['user' => 'Pengguna memiliki tugas workflow.']);
+            }
+            foreach (WorkflowVersion::cursor() as $version) {
+                foreach ($version->definition['nodes'] as $node) {
+                    $data = $node['data'];
+                    if (($data['assignee_type'] ?? null) === 'user' && (int) ($data['assignee_id'] ?? 0) === $target->id || (int) ($data['escalation_user_id'] ?? 0) === $target->id) {
+                        throw ValidationException::withMessages(['user' => 'Pengguna direferensikan versi workflow.']);
+                    }
+                }
             }
             $target->delete();
         });

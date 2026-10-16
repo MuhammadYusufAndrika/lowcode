@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Department;
 use App\Models\User;
 use App\Models\Workflow;
+use App\Services\WorkflowDefinitionService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -38,10 +39,6 @@ class DemoDataSeeder extends Seeder
                 ]);
 
                 if (! $user->wasRecentlyCreated) {
-                    if ($user->name === 'Demo '.$role && $user->hasExactRoles([$role])) {
-                        $user->update(['password' => $password]);
-                    }
-
                     continue;
                 }
 
@@ -66,5 +63,31 @@ class DemoDataSeeder extends Seeder
                 }
             }
         });
+
+        $designer = User::where('email', 'designer@demo.processflow.test')->firstOrFail();
+        $approver = User::where('email', 'approver@demo.processflow.test')->firstOrFail();
+        if (! $designer->hasExactRoles(['Workflow Designer']) || $designer->name !== 'Demo Workflow Designer' || ! $approver->hasRole('Approver')) {
+            return;
+        }
+        $workflow = Workflow::firstOrCreate(['code' => 'DEMO-PROCUREMENT'], ['name' => 'Procurement request', 'description' => 'Configurable procurement approval', 'category' => 'Finance', 'owner_id' => $designer->id, 'status' => 'draft']);
+        if (! $workflow->versions()->exists() && $workflow->owner_id === $designer->id && $workflow->status === 'draft') {
+            $node = fn ($id, $type, $data) => ['id' => $id, 'type' => $type, 'position' => ['x' => 0, 'y' => 0], 'data' => ['label' => ucfirst($id), ...$data]];
+            $edge = fn ($source, $target, $handle = 'next') => ['id' => $source.'-'.$handle, 'source' => $source, 'target' => $target, 'sourceHandle' => $handle];
+            $definition = ['nodes' => [
+                $node('start', 'start', []),
+                $node('form', 'form', ['fields' => [
+                    ['key' => 'item', 'label' => 'Item', 'type' => 'text', 'required' => true],
+                    ['key' => 'amount', 'label' => 'Amount', 'type' => 'number', 'required' => true, 'min' => 1],
+                    ['key' => 'attachment', 'label' => 'Supporting document', 'type' => 'file', 'required' => false],
+                ]]),
+                $node('budget', 'condition', ['condition' => ['field' => 'amount', 'operator' => 'gte', 'value' => 10000000]]),
+                $node('approval', 'approval', ['label' => 'Department approval', 'assignee_type' => 'user', 'assignee_id' => $approver->id, 'deadline_hours' => 24, 'escalation_user_id' => $approver->id]),
+                $node('notice', 'notification', ['message' => 'Procurement request processed.']),
+                $node('completed', 'end', ['outcome' => 'completed']),
+                $node('rejected', 'end', ['outcome' => 'rejected']),
+                $node('finance', 'approval', ['label' => 'Finance approval', 'assignee_type' => 'user', 'assignee_id' => $approver->id, 'deadline_hours' => 24]),
+            ], 'edges' => [$edge('start', 'form'), $edge('form', 'approval'), $edge('approval', 'budget', 'approved'), $edge('approval', 'rejected', 'rejected'), $edge('budget', 'finance', 'true'), $edge('budget', 'notice', 'false'), $edge('finance', 'notice', 'approved'), $edge('finance', 'rejected', 'rejected'), $edge('notice', 'completed')]];
+            app(WorkflowDefinitionService::class)->save($designer, $workflow, $definition, $workflow->draft_revision, true);
+        }
     }
 }

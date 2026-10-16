@@ -129,7 +129,7 @@ class PhaseOneTest extends TestCase
         $user = User::where('email', 'new@example.com')->firstOrFail();
         $this->assertSame(['Requester'], $user->getRoleNames()->all());
         $this->assertNull($user->department_id);
-        $this->assertCount(0, $user->getAllPermissions());
+        $this->assertEqualsCanonicalizing(['requests.submit', 'requests.view.own', 'notifications.view'], $user->getAllPermissions()->pluck('name')->all());
     }
 
     public function test_registration_works_before_roles_are_seeded(): void
