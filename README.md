@@ -116,7 +116,7 @@ Gunakan project Compose/volume dan secrets **terpisah** dari produksi. Sebelum c
 docker compose exec app php artisan db:seed --class=DemoDataSeeder
 ```
 
-Seeder menolak selain local/testing. Jangan bypass guard dengan menjalankan container ber-environment local yang menunjuk database produksi. Menjalankan ulang seeder dapat mereset password akun demo yang email, nama dan role persis cocok; akun yang bertabrakan tidak dipromosikan. Workflow demo lain yang sudah ada tidak di-reset; procurement draft milik demo designer yang belum memiliki versi dapat diisi dan dipublish oleh seeder.
+Seeder menolak selain local/testing. Jangan bypass guard dengan menjalankan container ber-environment local yang menunjuk database produksi. Menjalankan ulang seeder tidak mereset password atau role akun yang sudah ada. Akun demo lama `@demo.processflow.test` hanya diubah ke `@gmail.com` bila nama `Demo ROLE` dan role persis cocok, dengan ID dan histori tetap; benturan email atau identitas lama yang tidak cocok membatalkan transaksi akun. Akun Gmail yang sudah ada tanpa akun demo lama dibiarkan tanpa perubahan dan ketidakcocokan identitas dilaporkan; tidak ada promosi role. Workflow demo lain yang sudah ada tidak di-reset; procurement draft milik demo designer yang belum memiliki versi dapat diisi dan dipublish oleh seeder.
 
 Sample runtime opsional setelah DemoDataSeeder (hanya environment local; tidak mereset data):
 
@@ -130,11 +130,11 @@ Semua login di tabel ini memakai password literal **`password`**, **khusus demo 
 
 | Login | Role |
 | --- | --- |
-| `admin@demo.processflow.test` | Super Admin |
-| `designer@demo.processflow.test` | Workflow Designer |
-| `requester@demo.processflow.test` | Requester |
-| `approver@demo.processflow.test` | Approver |
-| `auditor@demo.processflow.test` | Auditor |
+| `admin@gmail.com` | Super Admin |
+| `designer@gmail.com` | Workflow Designer |
+| `requester@gmail.com` | Requester |
+| `approver@gmail.com` | Approver |
+| `auditor@gmail.com` | Auditor |
 
 1. Designer: buka procurement builder; inspect semua enam tipe node, field item/amount/attachment, threshold numeric 10.000.000, approval dan dua end outcome. Save/publish perubahan akan membuat versi baru; instance lama tidak berubah. Dua workflow demo lain tetap draft/archived metadata.
 2. Requester: buka katalog procurement, kirim item dan amount di bawah threshold: department approval terlebih dahulu, lalu condition false menuju notification/completed. Opsional upload file yang diizinkan.

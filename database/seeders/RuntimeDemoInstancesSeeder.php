@@ -19,8 +19,8 @@ class RuntimeDemoInstancesSeeder extends Seeder
         }
 
         DB::transaction(function (): void {
-            $requester = User::where('email', 'requester@demo.processflow.test')->sole();
-            $approver = User::where('email', 'approver@demo.processflow.test')->sole();
+            $requester = User::where('email', 'requester@gmail.com')->sole();
+            $approver = User::where('email', 'approver@gmail.com')->sole();
             $workflow = Workflow::where('code', 'DEMO-PROCUREMENT')->sole();
             $version = $workflow->versions()->orderByDesc('version')->firstOrFail();
             $engine = app(WorkflowEngine::class);

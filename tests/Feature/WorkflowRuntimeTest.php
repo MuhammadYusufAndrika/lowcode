@@ -39,9 +39,9 @@ class WorkflowRuntimeTest extends TestCase
     {
         parent::setUp();
         $this->seed(DemoDataSeeder::class);
-        $this->designer = User::where('email', 'designer@demo.processflow.test')->firstOrFail();
-        $this->requester = User::where('email', 'requester@demo.processflow.test')->firstOrFail();
-        $this->approver = User::where('email', 'approver@demo.processflow.test')->firstOrFail();
+        $this->designer = User::where('email', 'designer@gmail.com')->firstOrFail();
+        $this->requester = User::where('email', 'requester@gmail.com')->firstOrFail();
+        $this->approver = User::where('email', 'approver@gmail.com')->firstOrFail();
         $this->workflow = Workflow::where('code', 'DEMO-PROCUREMENT')->firstOrFail();
     }
 

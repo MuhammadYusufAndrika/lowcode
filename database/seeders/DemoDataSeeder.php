@@ -32,7 +32,29 @@ class DemoDataSeeder extends Seeder
             ];
 
             foreach ($accounts as [$alias, $role, $department]) {
-                $user = User::firstOrCreate(['email' => $alias.'@demo.processflow.test'], [
+                $email = $alias.'@gmail.com';
+                $legacy = User::where('email', $alias.'@demo.processflow.test')->lockForUpdate()->first();
+                $existing = User::where('email', $email)->lockForUpdate()->first();
+
+                if ($legacy) {
+                    if ($existing || $legacy->name !== 'Demo '.$role || ! $legacy->hasExactRoles([$role])) {
+                        throw new RuntimeException('Cannot safely migrate demo account to '.$email.'. Resolve the account collision or identity mismatch first.');
+                    }
+
+                    $legacy->update(['email' => $email]);
+
+                    continue;
+                }
+
+                if ($existing) {
+                    if ($existing->name !== 'Demo '.$role || ! $existing->hasExactRoles([$role])) {
+                        $this->command?->warn('Existing account '.$email.' left unchanged: demo identity does not match.');
+                    }
+
+                    continue;
+                }
+
+                $user = User::firstOrCreate(['email' => $email], [
                     'name' => 'Demo '.$role,
                     'password' => $password,
                     'department_id' => Department::where('name', $department)->sole()->id,
@@ -64,11 +86,12 @@ class DemoDataSeeder extends Seeder
             }
         });
 
-        $designer = User::where('email', 'designer@demo.processflow.test')->firstOrFail();
-        $approver = User::where('email', 'approver@demo.processflow.test')->firstOrFail();
+        $designer = User::where('email', 'designer@gmail.com')->firstOrFail();
+        $approver = User::where('email', 'approver@gmail.com')->firstOrFail();
         if (! $designer->hasExactRoles(['Workflow Designer']) || $designer->name !== 'Demo Workflow Designer' || ! $approver->hasRole('Approver')) {
             return;
         }
+        
         $workflow = Workflow::firstOrCreate(['code' => 'DEMO-PROCUREMENT'], ['name' => 'Procurement request', 'description' => 'Configurable procurement approval', 'category' => 'Finance', 'owner_id' => $designer->id, 'status' => 'draft']);
         if (! $workflow->versions()->exists() && $workflow->owner_id === $designer->id && $workflow->status === 'draft') {
             $node = fn ($id, $type, $data) => ['id' => $id, 'type' => $type, 'position' => ['x' => 0, 'y' => 0], 'data' => ['label' => ucfirst($id), ...$data]];
